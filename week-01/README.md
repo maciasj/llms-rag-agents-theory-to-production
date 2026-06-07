@@ -6,7 +6,7 @@ Companion code for **BSC Agents Course · Week 1**. The lectures lay the theory;
 
 - **Tokenization** — what the model actually sees, and why your bill is in tokens not words.
 - **Base vs. aligned** — GPT-2 (a base model, never RLHF'd) vs. Qwen3-1.7B (aligned). The same prompt produces a quiz on one side and an answer on the other. The alignment stack from Lecture 2 is the difference.
-- **The API call** — JSON in, JSON out, over HTTP. Universal wire format across providers (OpenAI, Anthropic via OpenRouter, Mistral, …) and local servers (Ollama, vLLM, LM Studio). See [`demos/context-explorer/`](./demos/context-explorer/) and [`demos/the-api-call/`](./demos/the-api-call/) — the bare call in `curl` and via the SDK, with chat-completions and the newer Responses API side by side.
+- **The API call** — JSON in, JSON out, over HTTP. Universal wire format across providers (OpenAI, Anthropic via OpenRouter, Mistral, …) and local servers (Ollama, vLLM, LM Studio). See [`demos/context-explorer/`](./demos/context-explorer/) and [`demos/the-api-call/`](./demos/the-api-call/) — the bare chat-completions call in `curl` and via the SDK, plus streaming and images.
 
 ## Exercises
 

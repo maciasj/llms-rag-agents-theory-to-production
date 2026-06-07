@@ -10,7 +10,6 @@ wire format reaches OpenAI, OpenRouter, Groq, and your laptop's Ollama alike.
 ```
 call.py              Chat Completions via the openai SDK   (runs on Ollama)
 call.sh              the same call, raw curl — no SDK       (runs on Ollama)
-responses_openai.py  the Responses API — OpenAI ONLY (will not run on Ollama)
 .env.example         config; copy to .env
 ```
 
@@ -48,10 +47,9 @@ You should get a one-sentence reply, plus the token `usage` and the
 
 - Change the `temperature` (0.0 vs 1.5) and run a few times. What changes?
 - Change the model in `.env`. Same code, different brain.
-- If you have an OpenAI key: set the cloud values in `.env` and run `call.py`
-  again — **unchanged**. Then run `responses_openai.py`. It works on OpenAI and
-  fails on Ollama. Why? Because `/v1/responses` is OpenAI-specific;
-  `/v1/chat/completions` is the format everyone speaks.
+- If you have a cloud key (OpenAI, OpenRouter, Groq): set the cloud values in
+  `.env` and run `call.py` again — **unchanged**. Same code, same wire format,
+  a frontier model instead of your laptop's. Only the `.env` changed.
 
 
 
