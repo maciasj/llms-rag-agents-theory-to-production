@@ -6,7 +6,7 @@ A small chatbot server with a FastAPI proxy backend and a vanilla JS frontend.
 
 ```bash
 # 1. Clone the repo
-git clone <repo-url> && cd easy-chatgpt
+git clone https://github.com/maciasj/llms-rag-agents-theory-to-production.git && cd easy-chatgpt
 
 # 2. Create config from template
 cp .env.example .env
