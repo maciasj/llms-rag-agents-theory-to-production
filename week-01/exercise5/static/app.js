@@ -2,12 +2,14 @@ const messages = [];
 let totalPrompt = 0;
 let totalCompletion = 0;
 let totalTokens = 0;
+let streaming = true;
 
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 const messagesDiv = document.getElementById('messages');
 const tokensDiv = document.getElementById('tokens');
 const messagesJson = document.getElementById('messages-json');
+const streamToggle = document.getElementById('stream-toggle');
 
 function addMessage(role, content) {
   messages.push({ role, content });
@@ -39,7 +41,99 @@ function updateContextView() {
   messagesJson.textContent = JSON.stringify(messages, null, 2);
 }
 
+function parseSSE(buffer) {
+  const events = [];
+  const parts = buffer.split('\n\n');
+  for (let i = 0; i < parts.length - 1; i++) {
+    const line = parts[i].trim();
+    if (line.startsWith('data: ')) {
+      try {
+        events.push(JSON.parse(line.slice(6)));
+      } catch (e) {}
+    }
+  }
+  return { events, remainder: parts[parts.length - 1] };
+}
+
+async function sendMessageStream() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  sendBtn.disabled = true;
+
+  messages.push({ role: 'user', content: text });
+  renderMessage('user', text);
+  updateContextView();
+
+  const assistantDiv = document.createElement('div');
+  assistantDiv.className = 'message assistant';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  assistantDiv.appendChild(bubble);
+  messagesDiv.appendChild(assistantDiv);
+
+  let fullContent = '';
+  let buffer = '';
+
+  try {
+    const resp = await fetch('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (!resp.ok) {
+      const detail = await resp.text();
+      bubble.textContent = `Error: ${resp.status} — ${detail}`;
+      messages.push({ role: 'assistant', content: `Error: ${resp.status} — ${detail}` });
+      updateContextView();
+      return;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { events, remainder } = parseSSE(buffer);
+      buffer = remainder;
+
+      for (const event of events) {
+        if (event.token) {
+          fullContent += event.token;
+          bubble.innerHTML = marked.parse(fullContent);
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        if (event.done && event.usage) {
+          totalPrompt = event.usage.prompt_tokens || 0;
+          totalCompletion = event.usage.completion_tokens || 0;
+          totalTokens = event.usage.total_tokens || 0;
+        }
+        if (event.error) {
+          bubble.textContent = `Error: ${event.error} — ${event.detail}`;
+        }
+      }
+    }
+
+    messages.push({ role: 'assistant', content: fullContent });
+    updateContextView();
+  } catch (err) {
+    bubble.textContent = `Network error: ${err.message}`;
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
 async function sendMessage() {
+  if (streaming) {
+    await sendMessageStream();
+    return;
+  }
+
   const text = input.value.trim();
   if (!text) return;
 
@@ -73,6 +167,10 @@ async function sendMessage() {
     input.focus();
   }
 }
+
+streamToggle.addEventListener('change', () => {
+  streaming = streamToggle.checked;
+});
 
 sendBtn.addEventListener('click', sendMessage);
 input.addEventListener('keydown', (e) => {

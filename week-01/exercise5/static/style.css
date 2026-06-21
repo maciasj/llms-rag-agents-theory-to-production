@@ -17,12 +17,25 @@ body { font-family: system-ui, sans-serif; height: 100vh; background: #f5f5f5; }
 }
 
 #header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 16px 20px;
   font-size: 1.2rem;
   font-weight: bold;
   border-bottom: 1px solid #eee;
   background: #fafafa;
 }
+#stream-label {
+  font-size: 0.85rem;
+  font-weight: normal;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  color: #555;
+}
+#stream-label input { cursor: pointer; }
 
 #messages {
   flex: 1;
