@@ -17,8 +17,15 @@
       </div>
       <div id="messages"></div>
       <div id="input-area">
-        <input id="input" type="text" placeholder="Type a message..." autofocus>
-        <button id="send">Send</button>
+        <div id="input-wrapper">
+          <div id="image-preview"></div>
+          <div id="input-row">
+            <button id="image-btn" type="button" title="Attach image">📷</button>
+            <input id="input" type="text" placeholder="Type a message..." autofocus>
+            <button id="send">Send</button>
+          </div>
+        </div>
+        <input id="image-input" type="file" accept="image/*" hidden>
       </div>
     </div>
     <div id="context-panel">

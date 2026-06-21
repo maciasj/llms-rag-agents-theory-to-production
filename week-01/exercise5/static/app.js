@@ -3,6 +3,7 @@ let totalPrompt = 0;
 let totalCompletion = 0;
 let totalTokens = 0;
 let streaming = true;
+let attachedImage = null;
 
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
@@ -10,6 +11,33 @@ const messagesDiv = document.getElementById('messages');
 const tokensDiv = document.getElementById('tokens');
 const messagesJson = document.getElementById('messages-json');
 const streamToggle = document.getElementById('stream-toggle');
+const imageBtn = document.getElementById('image-btn');
+const imageInput = document.getElementById('image-input');
+const imagePreview = document.getElementById('image-preview');
+
+imageBtn.addEventListener('click', () => imageInput.click());
+imageInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    attachedImage = reader.result;
+    imagePreview.innerHTML = `<img src="${attachedImage}"><button id="remove-image">&times;</button>`;
+    imagePreview.querySelector('#remove-image').onclick = () => {
+      attachedImage = null;
+      imagePreview.innerHTML = '';
+      imageInput.value = '';
+    };
+  };
+  reader.readAsDataURL(file);
+});
+
+function userContent(text) {
+  if (!attachedImage) return text;
+  const parts = [{ type: 'text', text }];
+  parts.push({ type: 'image_url', image_url: { url: attachedImage } });
+  return parts;
+}
 
 function addMessage(role, content) {
   messages.push({ role, content });
@@ -24,12 +52,28 @@ function renderMessage(role, content) {
   bubble.className = 'bubble';
   if (role === 'assistant') {
     bubble.innerHTML = marked.parse(content);
-  } else {
+  } else if (typeof content === 'string') {
     bubble.textContent = content;
+  } else {
+    let html = '';
+    for (const part of content) {
+      if (part.type === 'text') html += marked.parse(part.text);
+      if (part.type === 'image_url') html += `<img src="${part.image_url.url}" class="chat-image">`;
+    }
+    bubble.innerHTML = html;
   }
   div.appendChild(bubble);
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function truncateForDisplay(obj) {
+  return JSON.parse(JSON.stringify(obj, (key, val) => {
+    if (typeof val === 'string' && val.length > 120 && val.startsWith('data:image')) {
+      return val.slice(0, 80) + '…[base64 truncated]…' + val.slice(-40);
+    }
+    return val;
+  }));
 }
 
 function updateContextView() {
@@ -38,7 +82,7 @@ function updateContextView() {
     `Completion tokens: ${totalCompletion}`,
     `Total tokens: ${totalTokens}`,
   ].join('\n');
-  messagesJson.textContent = JSON.stringify(messages, null, 2);
+  messagesJson.textContent = JSON.stringify(truncateForDisplay(messages), null, 2);
 }
 
 function parseSSE(buffer) {
@@ -55,15 +99,19 @@ function parseSSE(buffer) {
   return { events, remainder: parts[parts.length - 1] };
 }
 
-async function sendMessageStream() {
-  const text = input.value.trim();
-  if (!text) return;
+function clearAttachedImage() {
+  attachedImage = null;
+  imagePreview.innerHTML = '';
+  imageInput.value = '';
+}
 
+async function sendMessageStream(content) {
   input.value = '';
   sendBtn.disabled = true;
 
-  messages.push({ role: 'user', content: text });
-  renderMessage('user', text);
+  messages.push({ role: 'user', content });
+  renderMessage('user', content);
+  clearAttachedImage();
   updateContextView();
 
   const assistantDiv = document.createElement('div');
@@ -128,19 +176,14 @@ async function sendMessageStream() {
   }
 }
 
-async function sendMessage() {
-  if (streaming) {
-    await sendMessageStream();
-    return;
-  }
-
-  const text = input.value.trim();
-  if (!text) return;
-
+async function sendMessageBaseline(content) {
   input.value = '';
   sendBtn.disabled = true;
 
-  addMessage('user', text);
+  messages.push({ role: 'user', content });
+  renderMessage('user', content);
+  clearAttachedImage();
+  updateContextView();
 
   try {
     const resp = await fetch('/api/chat', {
@@ -165,6 +208,19 @@ async function sendMessage() {
   } finally {
     sendBtn.disabled = false;
     input.focus();
+  }
+}
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text && !attachedImage) return;
+
+  const content = userContent(text || '');
+
+  if (streaming) {
+    await sendMessageStream(content);
+  } else {
+    await sendMessageBaseline(content);
   }
 }
 

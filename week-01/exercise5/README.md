@@ -27,17 +27,19 @@ docker compose up
 
 All config lives in `.env` (gitignored). Variables:
 
-| Variable    | Description                          | Default                                     |
-|-------------|--------------------------------------|---------------------------------------------|
-| `BASE_URL`  | Base URL of the LLM API              | `https://openrouter.ai/api/v1`              |
-| `API_KEY`   | API key for the LLM provider         | _(required)_                                |
-| `MODEL`     | Model identifier                     | `qwen/qwen3-coder:free`                     |
-| `PORT`      | Port the server listens on           | `6661`                                      |
+| Variable       | Description                          | Default                                     |
+|----------------|--------------------------------------|---------------------------------------------|
+| `BASE_URL`     | Base URL of the LLM API              | `http://host.docker.internal:11434/v1`              |
+| `API_KEY`      | API key for the LLM provider         | _(required)_                                |
+| `MODEL`        | Model for text-only requests         | `qwen/qwen3-coder:free`                     |
+| `VISION_MODEL` | Model for requests with images       | `qwen2.5vl:7b`                              |
+| `PORT`         | Port the server listens on           | `6661`                                      |
 
 ## Modes
 
 - **Baseline** — no streaming. Toggle off "Stream" in the UI.
 - **Streaming** — tokens arrive live via Server-Sent Events. Toggle on (default).
+- **Vision** (Best) — attach an image with the 📷 button. If the request includes an image, the backend routes to `VISION_MODEL` instead of `MODEL`. Supports both streaming and baseline.
 
 ## Development (without Docker)
 

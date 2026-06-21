@@ -9,18 +9,30 @@ import json
 import os
 
 load_dotenv()
-
 BASE_URL = os.getenv("BASE_URL", "https://openrouter.ai/api/v1")
 API_KEY = os.getenv("API_KEY")
 MODEL = os.getenv("MODEL", "qwen/qwen3-coder:free")
+VISION_MODEL = os.getenv("VISION_MODEL", "qwen2.5vl:7b")
 PORT = int(os.getenv("PORT", "6661"))
 
 if not API_KEY:
     raise RuntimeError("API_KEY is not set in .env")
 
+
+class ImageUrl(BaseModel):
+    url: str
+
+
+class ContentPart(BaseModel):
+    type: str
+    text: str | None = None
+    image_url: ImageUrl | None = None
+
+
 class Message(BaseModel):
     role: str
-    content: str
+    content: str | list[ContentPart]
+
 
 class ChatRequest(BaseModel):
     messages: list[Message]
@@ -33,6 +45,20 @@ class Usage(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     usage: Usage
+
+
+def _has_images(messages: list[Message]) -> bool:
+    for m in messages:
+        if isinstance(m.content, list):
+            return True
+    return False
+
+
+def _serialize_message(msg: Message) -> dict:
+    if isinstance(msg.content, list):
+        return {"role": msg.role, "content": [p.model_dump(exclude_none=True) for p in msg.content]}
+    return {"role": msg.role, "content": msg.content}
+
 
 app = FastAPI(title="Easy-ChatGPT Proxy")
 
@@ -51,15 +77,16 @@ app.add_middleware(
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
+    model = VISION_MODEL if _has_images(req.messages) else MODEL
     payload = {
-        "model": MODEL,
-        "messages": [m.model_dump() for m in req.messages],
+        "model": model,
+        "messages": [_serialize_message(m) for m in req.messages],
     }
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
     }
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with httpx.AsyncClient(timeout=300) as client:
         resp = await client.post(
             f"{BASE_URL}/chat/completions",
             json=payload,
@@ -73,12 +100,12 @@ async def chat(req: ChatRequest):
     usage = Usage(**data["usage"])
     return ChatResponse(reply=reply, usage=usage)
 
-
 @app.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest):
+    model = VISION_MODEL if _has_images(req.messages) else MODEL
     payload = {
-        "model": MODEL,
-        "messages": [m.model_dump() for m in req.messages],
+        "model": model,
+        "messages": [_serialize_message(m) for m in req.messages],
         "stream": True,
     }
     headers = {
@@ -87,7 +114,9 @@ async def chat_stream(req: ChatRequest):
     }
 
     async def generate():
-        async with httpx.AsyncClient() as client:
+        # Set timeout to 300 seconds (matching your standard chat endpoint)
+        # Alternatively, use httpx.Timeout(60.0, read=None) for infinite wait times on stream chunks
+        async with httpx.AsyncClient(timeout=300.0) as client:
             async with client.stream(
                 "POST", f"{BASE_URL}/chat/completions", json=payload, headers=headers
             ) as resp:
@@ -121,7 +150,6 @@ async def chat_stream(req: ChatRequest):
                             yield f"data: {json.dumps({'done': True})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
-
 
 if __name__ == "__main__":
     import uvicorn
