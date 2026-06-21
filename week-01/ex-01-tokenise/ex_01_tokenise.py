@@ -41,16 +41,12 @@ TOKENIZER_B = "bert-base-uncased"    # the "newer-ish" one (different family)
 
 # ---- the two paragraphs (you may replace with your own) --------------------
 PARAGRAPH_EN = (
-    "A large language model reads text as tokens, not words. The number of "
-    "tokens — not the number of words — is what you are billed for and what "
-    "must fit in the context window."
+    " The sun was up and the sky was blue. We all ran to the park and had fun. The day was warm and the air was soft."
 )
 # Same paragraph, in your language. The default is Spanish; replace it with
 # YOUR language for the exercise.
 PARAGRAPH_MINE = (
-    "Un gran modelo de lenguaje lee el texto como tokens, no como palabras. "
-    "El número de tokens — no el de palabras — es lo que se te factura y lo "
-    "que tiene que caber en la ventana de contexto."
+    "El sol ya había salido y el cielo estaba azul. Todos corrimos al parque y nos divertimos. El día era cálido y el aire suave."
 )
 
 # ---- four code-ish inputs for the tokenizer comparison ---------------------
